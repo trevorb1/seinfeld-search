@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Seinfeld Search — The Search Engine About Nothing",
-  description: "Search 100,000+ lines of dialogue across 172 episodes with instant full-text search.",
+  description: "Search 50,000+ lines of dialogue across 172 episodes with instant full-text search.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

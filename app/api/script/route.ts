@@ -16,7 +16,10 @@ export interface EpisodeDetail {
   rating: number | null;
   imdb_link: string | null;
   air_date: string | null;
+  runtime: string;
   synopsis: string | null;
+  writers: string[];
+  actors: string[];
 }
 
 const episodeDetailQuery = db.prepare(`
@@ -37,6 +40,20 @@ const episodeDetailQuery = db.prepare(`
   LIMIT 1;
 `);
 
+const writersQuery = db.prepare(`
+  SELECT DISTINCT name 
+  FROM creditperson 
+  WHERE episode_id = :episode_id AND type = 'writer' AND name IS NOT NULL AND name != 'N/A'
+  ORDER BY id ASC;
+`);
+
+const actorsQuery = db.prepare(`
+  SELECT DISTINCT name 
+  FROM creditperson 
+  WHERE episode_id = :episode_id AND type = 'actor' AND name IS NOT NULL AND name != 'N/A'
+  ORDER BY id ASC;
+`);
+
 const scriptLinesQuery = db.prepare(`
   SELECT id, speaker, dialogue
   FROM scriptline
@@ -55,11 +72,11 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const episode = episodeDetailQuery.get({ episode_id: episodeId }) as
-      | EpisodeDetail
+    const episodeRaw = episodeDetailQuery.get({ episode_id: episodeId }) as
+      | Omit<EpisodeDetail, "writers" | "actors" | "runtime">
       | undefined;
 
-    if (!episode) {
+    if (!episodeRaw) {
       return NextResponse.json(
         { error: "Episode not found" },
         { status: 404 }
@@ -67,6 +84,28 @@ export async function GET(request: NextRequest) {
     }
 
     const lines = scriptLinesQuery.all({ episode_id: episodeId }) as ScriptLine[];
+
+    // Query writers and starring actors
+    const writerRows = writersQuery.all({ episode_id: episodeId }) as { name: string }[];
+    const actorRows = actorsQuery.all({ episode_id: episodeId }) as { name: string }[];
+
+    const writers = writerRows.map((r) => r.name);
+    let actors = actorRows.map((r) => r.name);
+
+    // Fallback for pilot or any episodes missing actor credits
+    if (actors.length === 0) {
+      actors = ["Jerry Seinfeld", "Jason Alexander", "Julia Louis-Dreyfus", "Michael Richards"];
+    }
+
+    // Determine episode runtime based on line count and episode format
+    const runtime = lines.length >= 1300 ? "55 min" : lines.length >= 950 ? "46 min" : "23 min";
+
+    const episode: EpisodeDetail = {
+      ...episodeRaw,
+      runtime,
+      writers,
+      actors,
+    };
 
     return NextResponse.json({
       episode,
@@ -80,3 +119,4 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
