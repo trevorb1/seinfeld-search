@@ -336,7 +336,7 @@ function MainApp() {
           className="text-xs"
           style={{ fontFamily: "'DM Mono', monospace", color: "var(--muted-foreground)" }}
         >
-          All 9 Seasons · 172 Episodes · 109,232 Lines
+          All 9 Seasons · 172 Episodes · 54,614 Lines
         </span>
       </footer>
     </div>
@@ -405,7 +405,7 @@ function HomeView({
           lineHeight: 1.6,
         }}
       >
-        Search across every line of dialogue, scene description, and stage direction from all 9 seasons.
+        Search across every line of dialogue from all 9 seasons.
       </p>
 
       {/* Search form */}
@@ -592,7 +592,7 @@ function HomeView({
         {[
           { label: "Episodes", value: String(episodesCount) },
           { label: "Seasons", value: "09" },
-          { label: "Lines of Dialogue", value: "109,232" },
+          { label: "Lines of Dialogue", value: "54,614" },
         ].map(({ label, value }) => (
           <div key={label} className="flex flex-col items-center gap-1">
             <span
@@ -833,7 +833,7 @@ function SearchResultsView({
                   Line #{result.line_id}
                 </span>
 
-                {result.rating && (
+                {result.rating != null && (
                   <>
                     <span className="text-xs" style={{ color: "var(--border)" }}>
                       ·
@@ -1096,7 +1096,7 @@ function EpisodesView({
                     {ep.episode_title}
                   </span>
 
-                  {ep.rating && (
+                  {ep.rating != null && (
                     <span
                       className="text-xs shrink-0 hidden md:inline font-medium"
                       style={{
@@ -1260,7 +1260,13 @@ function ScriptView({
                   </span>
                 </>
               )}
-              {episode.rating && (
+              <span style={{ color: "var(--border)" }}>·</span>
+              <span
+                style={{ fontFamily: "'DM Mono', monospace", color: "var(--muted-foreground)" }}
+              >
+                {episode.runtime || "23 min"}
+              </span>
+              {(episode.rating != null || episode.imdb_link) && (
                 <>
                   <span style={{ color: "var(--border)" }}>·</span>
                   {episode.imdb_link ? (
@@ -1274,7 +1280,7 @@ function ScriptView({
                         color: "var(--accent)",
                       }}
                     >
-                      ⭐ {(episode.rating / 10).toFixed(1)} IMDb
+                      ⭐ {episode.rating != null ? (episode.rating / 10).toFixed(1) : "N/A"} IMDb
                     </a>
                   ) : (
                     <span
@@ -1283,7 +1289,7 @@ function ScriptView({
                         color: "var(--accent)",
                       }}
                     >
-                      ⭐ {(episode.rating / 10).toFixed(1)}
+                      ⭐ {(episode.rating! / 10).toFixed(1)}
                     </span>
                   )}
                 </>
@@ -1309,6 +1315,42 @@ function ScriptView({
               </p>
             )}
 
+            {/* Writers & Cast */}
+            {(episode.writers?.length > 0 || episode.actors?.length > 0) && (
+              <div
+                className="mt-4 pt-3 space-y-1"
+                style={{
+                  borderTop: "1px solid var(--border)",
+                }}
+              >
+                {episode.writers && episode.writers.length > 0 && (
+                  <p
+                    className="text-sm leading-relaxed"
+                    style={{
+                      fontFamily: "'Source Sans 3', sans-serif",
+                      color: "var(--muted-foreground)",
+                    }}
+                  >
+                    Written by: {episode.writers.join(", ")}
+                  </p>
+                )}
+
+                {episode.actors && episode.actors.length > 0 && (
+                  <p
+                    className="text-sm leading-relaxed"
+                    style={{
+                      fontFamily: "'Source Sans 3', sans-serif",
+                      color: "var(--muted-foreground)",
+                    }}
+                  >
+                    Starring: {episode.actors.join(", ")}
+                  </p>
+                )}
+              </div>
+            )}
+
+
+
             <div
               className="mt-4 pt-3 flex items-center justify-between text-xs"
               style={{
@@ -1318,6 +1360,7 @@ function ScriptView({
               }}
             >
               <span>{lines.length} total lines in script</span>
+
               {targetLineId && (
                 <span style={{ color: "var(--accent)" }}>
                   Navigated to Line #{targetLineId}
