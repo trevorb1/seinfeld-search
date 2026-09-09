@@ -4,14 +4,13 @@
 
 ## Tech stack
 
+[![seinpy](https://img.shields.io/badge/seinpy-blue?style=flat-square)](https://github.com/trevorb1/seinpy)
 [![Next.js](https://img.shields.io/badge/Next.js-16-black?style=flat-square&logo=next.js)](https://nextjs.org/)
 [![React](https://img.shields.io/badge/React-19-blue?style=flat-square&logo=react)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-38B2AC?style=flat-square&logo=tailwind-css)](https://tailwindcss.com/)
 [![SQLite FTS5](https://img.shields.io/badge/SQLite-FTS5-003B57?style=flat-square&logo=sqlite)](https://www.sqlite.org/fts5.html)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
-
-
 
 ---
 
@@ -23,15 +22,6 @@
 - **Direct Line Deep Linking**: Click any search result to automatically load the full script, smoothly scroll down, and highlight the exact matching line.
 - **In-Script Filtering**: Quickly filter dialogue within an active episode script in real time.
 - **Episode Browser & Ratings**: Browse all 172 episodes by season with IMDb ratings, vote counts, air dates, runtimes, synopses, writers, and starring cast.
-
----
-
-## Tech Stack
-
-- **Backend API**: [seinpy](https://github.com/trevorb1/seinpy)
-- **Frontend**: [next.js 16](https://nextjs.org) (App Router)
-- **UI & Styling**: [react 19](https://react.dev), [tailwind css v4](https://tailwindcss.com)
-- **Language**: [typescript](https://www.typescriptlang.org)
 
 ---
 

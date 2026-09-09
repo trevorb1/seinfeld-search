@@ -42,7 +42,7 @@ function buildFtsQueries(input: string): { primary: string; fallback: string } {
   return { primary: balanced, fallback };
 }
 
-const searchQuery = db.prepare(`
+const baseSelectSql = `
   SELECT 
       sl.id AS line_id,
       e.episode_id,
@@ -63,9 +63,13 @@ const searchQuery = db.prepare(`
   LEFT JOIN credit c ON e.episode_id = c.episode_id
   WHERE scriptline_fts MATCH :query
     AND (:speaker = '' OR sl.speaker = :speaker)
-  ORDER BY rank
-  LIMIT :limit OFFSET :offset;
-`);
+`;
+
+const searchQueries = {
+  relevance: db.prepare(`${baseSelectSql} ORDER BY rank LIMIT :limit OFFSET :offset;`),
+  line_asc: db.prepare(`${baseSelectSql} ORDER BY sl.id ASC LIMIT :limit OFFSET :offset;`),
+  line_desc: db.prepare(`${baseSelectSql} ORDER BY sl.id DESC LIMIT :limit OFFSET :offset;`),
+};
 
 const countQuery = db.prepare(`
   SELECT count(*) AS total
@@ -74,6 +78,8 @@ const countQuery = db.prepare(`
   WHERE scriptline_fts MATCH :query
     AND (:speaker = '' OR sl.speaker = :speaker);
 `);
+
+export type SortOrder = "relevance" | "line_asc" | "line_desc";
 
 export async function GET(request: NextRequest) {
   const startTime = performance.now();
@@ -84,12 +90,23 @@ export async function GET(request: NextRequest) {
   const limit = Math.min(Math.max(Number(searchParams.get("limit")) || 25, 1), 100);
   const offset = Math.max(Number(searchParams.get("offset")) || 0, 0);
 
+  const sortParam = searchParams.get("sort")?.trim();
+  const sort: SortOrder =
+    sortParam === "line_asc" || sortParam === "line"
+      ? "line_asc"
+      : sortParam === "line_desc"
+      ? "line_desc"
+      : "relevance";
+
+  const activeSearchQuery = searchQueries[sort];
+
   if (!rawQuery) {
     return NextResponse.json({
       results: [],
       total: 0,
       query: "",
       speaker: "",
+      sort,
       tookMs: 0,
     });
   }
@@ -101,7 +118,7 @@ export async function GET(request: NextRequest) {
 
   try {
     // Attempt 1: primary query with balanced quotes
-    results = searchQuery.all({
+    results = activeSearchQuery.all({
       query: primary,
       speaker,
       limit,
@@ -117,7 +134,7 @@ export async function GET(request: NextRequest) {
     // Attempt 2: If primary FTS syntax fails, use fallback safe token prefix match
     if (fallback && fallback !== primary) {
       try {
-        results = searchQuery.all({
+        results = activeSearchQuery.all({
           query: fallback,
           speaker,
           limit,
@@ -151,6 +168,7 @@ export async function GET(request: NextRequest) {
     total,
     query: rawQuery,
     speaker,
+    sort,
     tookMs,
   });
 }
