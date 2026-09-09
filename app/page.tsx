@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import type { SearchResult } from "@/app/api/search/route";
+import type { SearchResult, SortOrder } from "@/app/api/search/route";
 import type { EpisodeSummary } from "@/app/api/episodes/route";
 import type { EpisodeDetail, ScriptLine } from "@/app/api/script/route";
 
@@ -73,12 +73,16 @@ function MainApp() {
   const urlView = (searchParams.get("view") as View) || (urlQuery ? "results" : "home");
   const urlEp = searchParams.get("ep") || "";
   const urlLine = searchParams.get("line") ? parseInt(searchParams.get("line")!, 10) : null;
+  const urlSort = (searchParams.get("sort") as SortOrder) || "relevance";
 
   const [view, setView] = useState<View>(urlView);
   const [query, setQuery] = useState(urlQuery);
   const [submittedQuery, setSubmittedQuery] = useState(urlQuery);
   const [selectedCharacters, setSelectedCharacters] = useState<string[]>(
     urlSpeaker ? [urlSpeaker] : []
+  );
+  const [sortOrder, setSortOrder] = useState<SortOrder>(
+    urlSort === "line_asc" || urlSort === "line_desc" ? urlSort : "relevance"
   );
 
   // Search Results state
@@ -138,6 +142,7 @@ function MainApp() {
     const params = new URLSearchParams({
       q: searchTerm,
       ...(speakerParam ? { speaker: speakerParam } : {}),
+      ...(sortOrder !== "relevance" ? { sort: sortOrder } : {}),
       limit: "50",
     });
 
@@ -164,7 +169,7 @@ function MainApp() {
       });
 
     return () => controller.abort();
-  }, [submittedQuery, selectedCharacters]);
+  }, [submittedQuery, selectedCharacters, sortOrder]);
 
   // Load script when activeEpisodeId changes
   useEffect(() => {
@@ -213,6 +218,16 @@ function MainApp() {
     const params = new URLSearchParams();
     if (query.trim()) params.set("q", query.trim());
     if (selectedCharacters.length === 1) params.set("speaker", selectedCharacters[0]);
+    if (sortOrder !== "relevance") params.set("sort", sortOrder);
+    router.replace(`/?${params.toString()}`, { scroll: false });
+  }
+
+  function handleSortChange(newSort: SortOrder) {
+    setSortOrder(newSort);
+    const params = new URLSearchParams();
+    if (submittedQuery.trim()) params.set("q", submittedQuery.trim());
+    if (selectedCharacters.length === 1) params.set("speaker", selectedCharacters[0]);
+    if (newSort !== "relevance") params.set("sort", newSort);
     router.replace(`/?${params.toString()}`, { scroll: false });
   }
 
@@ -290,6 +305,8 @@ function MainApp() {
             totalResults={totalResults}
             loading={searchLoading}
             error={searchError}
+            sortOrder={sortOrder}
+            onSortChange={handleSortChange}
             onBack={() => setView("home")}
             onOpenScript={(epId, lineId) => openScript(epId, lineId, "results")}
           />
@@ -396,18 +413,6 @@ function HomeView({
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-140px)] px-6 py-12">
-      {/* Decorative rule + label */}
-      <div className="flex items-center gap-4 mb-8">
-        <div className="w-12 sm:w-16 h-px" style={{ backgroundColor: "var(--border)" }} />
-        <span
-          className="text-xs tracking-[0.25em] uppercase"
-          style={{ fontFamily: "'DM Mono', monospace", color: "var(--muted-foreground)" }}
-        >
-          Search the Scripts
-        </span>
-        <div className="w-12 sm:w-16 h-px" style={{ backgroundColor: "var(--border)" }} />
-      </div>
-
       {/* Title */}
       <h1
         className="text-center mb-3 leading-tight"
@@ -648,6 +653,8 @@ function SearchResultsView({
   totalResults,
   loading,
   error,
+  sortOrder,
+  onSortChange,
   onBack,
   onOpenScript,
 }: {
@@ -656,6 +663,8 @@ function SearchResultsView({
   totalResults: number;
   loading: boolean;
   error: string | null;
+  sortOrder: SortOrder;
+  onSortChange: (newSort: SortOrder) => void;
   onBack: () => void;
   onOpenScript: (episodeId: string, lineId: number) => void;
 }) {
@@ -719,15 +728,93 @@ function SearchResultsView({
           </span>
         </div>
 
-        {!loading && (
+        {/* Subheader with match count and Sort Toggle */}
+        <div
+          className="mt-4 pt-3 pb-2 border-t flex items-center justify-between flex-wrap gap-4"
+          style={{ borderColor: "var(--border)" }}
+        >
           <p
-            className="mt-2 text-sm"
+            className="text-sm"
             style={{ fontFamily: "'DM Mono', monospace", color: "var(--muted-foreground)" }}
           >
-            {totalResults.toLocaleString()} matches · across {seasonsCount} season
-            {seasonsCount === 1 ? "" : "s"}
+            {!loading ? (
+              <>
+                {totalResults.toLocaleString()} matches · across {seasonsCount} season
+                {seasonsCount === 1 ? "" : "s"}
+              </>
+            ) : (
+              "Searching dialogue..."
+            )}
           </p>
-        )}
+
+          {/* Sort Controls */}
+          <div className="flex items-center gap-2">
+            <span
+              className="text-xs uppercase tracking-wider"
+              style={{ fontFamily: "'DM Mono', monospace", color: "var(--muted-foreground)" }}
+            >
+              Sort:
+            </span>
+            <div
+              className="inline-flex border text-xs"
+              style={{ borderColor: "var(--border)" }}
+            >
+              <button
+                type="button"
+                onClick={() => onSortChange("relevance")}
+                className={`px-3 py-1 cursor-pointer transition-colors ${
+                  sortOrder === "relevance" ? "font-medium" : "hover:opacity-75"
+                }`}
+                style={{
+                  fontFamily: "'DM Mono', monospace",
+                  backgroundColor:
+                    sortOrder === "relevance" ? "var(--foreground)" : "transparent",
+                  color:
+                    sortOrder === "relevance" ? "var(--background)" : "var(--foreground)",
+                }}
+                title="Sort by keyword relevance (BM25)"
+              >
+                Relevance
+              </button>
+              <button
+                type="button"
+                onClick={() => onSortChange("line_asc")}
+                className={`px-3 py-1 cursor-pointer border-l transition-colors ${
+                  sortOrder === "line_asc" ? "font-medium" : "hover:opacity-75"
+                }`}
+                style={{
+                  borderColor: "var(--border)",
+                  fontFamily: "'DM Mono', monospace",
+                  backgroundColor:
+                    sortOrder === "line_asc" ? "var(--foreground)" : "transparent",
+                  color:
+                    sortOrder === "line_asc" ? "var(--background)" : "var(--foreground)",
+                }}
+                title="Sort by line number ascending (chronological order)"
+              >
+                Line # (Ascending)
+              </button>
+              <button
+                type="button"
+                onClick={() => onSortChange("line_desc")}
+                className={`px-3 py-1 cursor-pointer border-l transition-colors ${
+                  sortOrder === "line_desc" ? "font-medium" : "hover:opacity-75"
+                }`}
+                style={{
+                  borderColor: "var(--border)",
+                  fontFamily: "'DM Mono', monospace",
+                  backgroundColor:
+                    sortOrder === "line_desc" ? "var(--foreground)" : "transparent",
+                  color:
+                    sortOrder === "line_desc" ? "var(--background)" : "var(--foreground)",
+                }}
+                title="Sort by line number descending (reverse chronological)"
+              >
+                Line # (Descending)
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Loading state */}
@@ -853,7 +940,11 @@ function SearchResultsView({
 
                 <span
                   className="text-xs"
-                  style={{ fontFamily: "'DM Mono', monospace", color: "var(--muted-foreground)" }}
+                  style={{
+                    fontFamily: "'DM Mono', monospace",
+                    color: sortOrder !== "relevance" ? "var(--foreground)" : "var(--muted-foreground)",
+                    fontWeight: sortOrder !== "relevance" ? 600 : 400,
+                  }}
                 >
                   Line #{result.line_id}
                 </span>
