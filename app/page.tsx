@@ -1431,8 +1431,10 @@ function ScriptView({
               </p>
             )}
 
-            {/* Writers & Cast */}
-            {(episode.writers?.length > 0 || episode.actors?.length > 0) && (
+            {/* todo: add cast back in once OMDb returns correct cast list*/}
+            {/* Writers, Director & Cast */}
+            {(episode.writers?.length > 0 ||
+              episode.directors?.length > 0 /* || episode.actors?.length > 0 */) && (
               <div
                 className="mt-4 pt-3 space-y-1"
                 style={{
@@ -1451,6 +1453,19 @@ function ScriptView({
                   </p>
                 )}
 
+                {episode.directors && episode.directors.length > 0 && (
+                  <p
+                    className="text-sm leading-relaxed"
+                    style={{
+                      fontFamily: "'Source Sans 3', sans-serif",
+                      color: "var(--muted-foreground)",
+                    }}
+                  >
+                    Directed by: {episode.directors.join(", ")}
+                  </p>
+                )}
+
+                {/* Cast commented out for now:
                 {episode.actors && episode.actors.length > 0 && (
                   <p
                     className="text-sm leading-relaxed"
@@ -1461,7 +1476,7 @@ function ScriptView({
                   >
                     Starring: {episode.actors.join(", ")}
                   </p>
-                )}
+                )} */}
               </div>
             )}
 

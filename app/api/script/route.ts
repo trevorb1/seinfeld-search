@@ -19,6 +19,7 @@ export interface EpisodeDetail {
   runtime: string;
   synopsis: string | null;
   writers: string[];
+  directors: string[];
   actors: string[];
 }
 
@@ -44,6 +45,13 @@ const writersQuery = db.prepare(`
   SELECT DISTINCT name 
   FROM creditperson 
   WHERE episode_id = :episode_id AND type = 'writer' AND name IS NOT NULL AND name != 'N/A'
+  ORDER BY id ASC;
+`);
+
+const directorsQuery = db.prepare(`
+  SELECT DISTINCT name 
+  FROM creditperson 
+  WHERE episode_id = :episode_id AND type = 'director' AND name IS NOT NULL AND name != 'N/A'
   ORDER BY id ASC;
 `);
 
@@ -73,7 +81,7 @@ export async function GET(request: NextRequest) {
     }
 
     const episodeRaw = episodeDetailQuery.get({ episode_id: episodeId }) as
-      | Omit<EpisodeDetail, "writers" | "actors" | "runtime">
+      | Omit<EpisodeDetail, "writers" | "directors" | "actors" | "runtime">
       | undefined;
 
     if (!episodeRaw) {
@@ -85,11 +93,13 @@ export async function GET(request: NextRequest) {
 
     const lines = scriptLinesQuery.all({ episode_id: episodeId }) as ScriptLine[];
 
-    // Query writers and starring actors
+    // Query writers, directors, and starring actors
     const writerRows = writersQuery.all({ episode_id: episodeId }) as { name: string }[];
+    const directorRows = directorsQuery.all({ episode_id: episodeId }) as { name: string }[];
     const actorRows = actorsQuery.all({ episode_id: episodeId }) as { name: string }[];
 
     const writers = writerRows.map((r) => r.name);
+    const directors = directorRows.map((r) => r.name);
     let actors = actorRows.map((r) => r.name);
 
     // Fallback for pilot or any episodes missing actor credits
@@ -104,6 +114,7 @@ export async function GET(request: NextRequest) {
       ...episodeRaw,
       runtime,
       writers,
+      directors,
       actors,
     };
 
